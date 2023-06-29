@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Gerenciador de Doações</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f0f0f0;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    h2 {
+      color: #333;
+      margin-top: 20px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #4CAF50;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    .popup-container {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 400px;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      z-index: 9999;
+    }
+
+    .popup-container h2 {
+      margin-top: 0;
+    }
+
+    .popup-container label {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .popup-container input[type="text"],
+    .popup-container input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+
+    .popup-container button {
+      margin-top: 20px;
+    }
+
+    .popup-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 9998;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+
+    #chartContainer {
+      width: 300px;
+      height: 300px;
+      margin-top: 20px;
+    }
+
+    .progress-container {
+      width: 100%;
+      height: 30px;
+      background-color: #f2f2f2;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 20px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background-color: #4CAF50;
+      width: 0;
+    }
+
+    .progress-text {
+      font-size: 14px;
+      color: #333;
+      padding-left: 10px;
+      line-height: 30px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Gerenciador de Doações</h1>
+
+  <button id="donateButton">Adicionar doação</button>
+  <button id="fundraiseButton">Adicionar convidada</button>
+
+  <div class="popup-container" id="donatePopup">
+    <h2>Doar</h2>
+    <form id="donationForm">
+      <label for="donationAmount">Valor de doação:</label>
+      <input type="text" id="donationAmount" required>
+
+      <label for="donationDescription">Descrição:</label>
+      <input type="text" id="donationDescription">
+
+      <button type="submit">Doar</button>
+      <button id="closeDonatePopupButton">Fechar</button>
+    </form>
+  </div>
+
+  <div class="popup-container" id="fundraisePopup">
+    <h2>Adicionar convidada</h2>
+    <form id="fundraisingForm">
+      <label for="fundraisingAmount">Valor que precisa:</label>
+      <input type="text" id="fundraisingAmount" required>
+
+      <label for="fundraisingName">Nome:</label>
+      <input type="text" id="fundraisingName" required>
+
+      <label for="fundraisingDescription">Descrição:</label>
+      <input type="text" id="fundraisingDescription">
+
+      <button type="submit">Adicionar</button>
+      <button id="closeFundraisePopupButton">Fechar</button>
+    </form>
+  </div>
+
+  <div id="donationTable"></div>
+  <div id="fundraisingTable"></div>
+
+  <div id="chartContainer"></div>
+
+  <div id="fundraisingProgress"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    var donations = [];
+    var fundraisings = [];
+
+    function updateTables() {
+      var donationTable = document.getElementById('donationTable');
+      donationTable.innerHTML = '';
+
+      var fundraisingTable = document.getElementById('fundraisingTable');
+      fundraisingTable.innerHTML = '';
+
+      if (donations.length === 0 && fundraisings.length === 0) {
+        donationTable.innerHTML = '<p>Nenhuma doação encontrada.</p>';
+        fundraisingTable.innerHTML = '<p>Nenhuma arrecadação encontrada.</p>';
+        return;
+      }
+
+      if (donations.length > 0) {
+        var donationTableHtml = '<h2>Doações</h2><table><tr><th>Valor</th><th>Descrição</th></tr>';
+        for (var i = 0; i < donations.length; i++) {
+          donationTableHtml += '<tr><td>' + formatCurrency(donations[i].amount) + '</td><td>' + (donations[i].description || '') + '</td></tr>';
+        }
+        donationTableHtml += '</table>';
+        donationTable.innerHTML = donationTableHtml;
+      }
+
+      if (fundraisings.length > 0) {
+        var fundraisingTableHtml = '<h2>Convidadas</h2><table><tr><th>Valor necessário</th><th>Nome</th><th>Descrição</th></tr>';
+        for (var j = 0; j < fundraisings.length; j++) {
+          fundraisingTableHtml += '<tr><td>' + formatCurrency(fundraisings[j].amount) + '</td><td>' + fundraisings[j].name + '</td><td>' + (fundraisings[j].description || '') + '</td></tr>';
+        }
+        fundraisingTableHtml += '</table>';
+        fundraisingTable.innerHTML = fundraisingTableHtml;
+      }
+    }
+
+    function formatCurrency(value) {
+      return 'R$ ' + value.toFixed(2);
+    }
+
+    function addDonation(amount, description) {
+      donations.push({
+        amount: amount,
+        description: description
+      });
+      updateTables();
+    }
+
+    function addFundraising(amount, name, description) {
+      fundraisings.push({
+        amount: amount,
+        name: name,
+        description: description
+      });
+      updateTables();
+    }
+
+    function getTotalDonations() {
+      var totalDonations = 0;
+      for (var i = 0; i < donations.length; i++) {
+        totalDonations += donations[i].amount;
+      }
+      return totalDonations;
+    }
+
+    function getTotalFundraisings() {
+      var totalFundraisings = 0;
+      for (var i = 0; i < fundraisings.length; i++) {
+        totalFundraisings += fundraisings[i].amount;
+      }
+      return totalFundraisings;
+    }
+
+    function getRemainingAmount() {
+      var totalDonations = getTotalDonations();
+      var totalFundraisings = getTotalFundraisings();
+      var remainingAmount = totalFundraisings - totalDonations;
+      return remainingAmount;
+    }
+
+    function updateFundraisingProgress() {
+      var remainingAmount = getRemainingAmount();
+      var fundraisingProgress = document.getElementById('fundraisingProgress');
+      fundraisingProgress.innerHTML = 'Valor que falta receber: ' + formatCurrency(remainingAmount);
+    }
+
+    function openPopup(popupId) {
+      var popup = document.getElementById(popupId);
+      var overlay = document.getElementById('popupOverlay');
+      popup.style.display = 'block';
+      overlay.style.display = 'block';
+    }
+
+    function closePopup(popupId) {
+      var popup = document.getElementById(popupId);
+      var overlay = document.getElementById('popupOverlay');
+      popup.style.display = 'none';
+      overlay.style.display = 'none';
+    }
+
+    function init() {
+      var donateButton = document.getElementById('donateButton');
+      donateButton.addEventListener('click', function() {
+        openPopup('donatePopup');
+      });
+
+      var fundraiseButton = document.getElementById('fundraiseButton');
+      fundraiseButton.addEventListener('click', function() {
+        openPopup('fundraisePopup');
+      });
+
+      var closeDonatePopupButton = document.getElementById('closeDonatePopupButton');
+      closeDonatePopupButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        closePopup('donatePopup');
+      });
+
+      var closeFundraisePopupButton = document.getElementById('closeFundraisePopupButton');
+      closeFundraisePopupButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        closePopup('fundraisePopup');
+      });
+
+      var donationForm = document.getElementById('donationForm');
+      donationForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        var donationAmount = document.getElementById('donationAmount').value;
+        var donationDescription = document.getElementById('donationDescription').value;
+        addDonation(parseFloat(donationAmount), donationDescription);
+        closePopup('donatePopup');
+      });
+
+      var fundraisingForm = document.getElementById('fundraisingForm');
+      fundraisingForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        var fundraisingAmount = document.getElementById('fundraisingAmount').value;
+        var fundraisingName = document.getElementById('fundraisingName').value;
+        var fundraisingDescription = document.getElementById('fundraisingDescription').value;
+        addFundraising(parseFloat(fundraisingAmount), fundraisingName, fundraisingDescription);
+        closePopup('fundraisePopup');
+      });
+
+      updateTables();
+      updateFundraisingProgress();
+    }
+
+    init();
+  function addDonation(amount, description) {
+      donations.push({
+        amount: amount,
+        description: description
+      });
+      updateTables();
+      updateFundraisingProgress(); // Atualiza o valor que falta receber
+    }
+
+    function addFundraising(amount, name, description) {
+      fundraisings.push({
+        amount: amount,
+        name: name,
+        description: description
+      });
+      updateTables();
+      updateFundraisingProgress(); // Atualiza o valor que falta receber
+    }  
+
+
+// manifest json
+     if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('service-worker.js').then(function(registration) {
+          console.log('Service Worker registrado com sucesso:', registration.scope);
+        }).catch(function(error) {
+          console.log('Falha ao registrar o Service Worker:', error);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
