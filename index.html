@@ -1,8 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Gerenciador de Doações</title>
+  <title>Transformadas no acamp</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="manifest" href="manifest.json">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -23,7 +27,7 @@
     button {
       padding: 10px 20px;
       font-size: 16px;
-      background-color: #4CAF50;
+      background-color: #1E90FF;
       color: #fff;
       border: none;
       border-radius: 4px;
@@ -31,7 +35,7 @@
     }
 
     button:hover {
-      background-color: #45a049;
+      background-color: #87CEFA;
     }
 
     .popup-container {
@@ -41,7 +45,7 @@
       left: 50%;
       transform: translate(-50%, -50%);
       width: 400px;
-      padding: 20px;
+      padding: 50px;
       background-color: #fff;
       border-radius: 4px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -98,18 +102,13 @@
     }
 
     #chartContainer {
-      width: 300px;
+      width: 100%;
       height: 300px;
       margin-top: 20px;
     }
 
     .progress-container {
-      width: 100%;
-      height: 30px;
-      background-color: #f2f2f2;
-      border-radius: 4px;
-      overflow: hidden;
-      margin-top: 20px;
+      display: none;
     }
 
     .progress-bar {
@@ -124,237 +123,329 @@
       padding-left: 10px;
       line-height: 30px;
     }
+
+    /* Responsiveness */
+    @media screen and (max-width: 600px) {
+      .popup-container {
+        width: 90%;
+        padding: 20px;
+      }
+
+      #chartContainer {
+        height: 200px;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>Gerenciador de Doações</h1>
+  <h1>Transformadas no acamp</h1>
 
-  <button id="donateButton">Adicionar doação</button>
-  <button id="fundraiseButton">Adicionar convidada</button>
+  <div id="missingAmount"></div><br>
 
-  <div class="popup-container" id="donatePopup">
-    <h2>Doar</h2>
-    <form id="donationForm">
-      <label for="donationAmount">Valor de doação:</label>
-      <input type="text" id="donationAmount" required>
 
-      <label for="donationDescription">Descrição:</label>
-      <input type="text" id="donationDescription">
+  <button onclick="showDonationPopup()">Adicionar doação</button>
+  <button onclick="showFundraisingPopup()">Adicionar Convidada</button>
 
-      <button type="submit">Doar</button>
-      <button id="closeDonatePopupButton">Fechar</button>
-    </form>
+  <div class="popup-overlay" id="popupOverlay"></div>
+
+  <div class="popup-container" id="donationPopup">
+    <h2>Adicionar doação</h2>
+    <label for="amount">Valor:</label>
+    <input type="number" id="amount" placeholder="Valor em reais" required><br><br>
+    <label for="description">Descrição:</label>
+    <input type="text" id="description" placeholder="Descrição da doação" required>
+    <button onclick="addDonation()">Adicionar</button>
+    <button onclick="hidePopup()">Cancelar</button>
   </div>
 
-  <div class="popup-container" id="fundraisePopup">
-    <h2>Adicionar convidada</h2>
-    <form id="fundraisingForm">
-      <label for="fundraisingAmount">Valor que precisa:</label>
-      <input type="text" id="fundraisingAmount" required>
-
-      <label for="fundraisingName">Nome:</label>
-      <input type="text" id="fundraisingName" required>
-
-      <label for="fundraisingDescription">Descrição:</label>
-      <input type="text" id="fundraisingDescription">
-
-      <button type="submit">Adicionar</button>
-      <button id="closeFundraisePopupButton">Fechar</button>
-    </form>
+  <div class="popup-container" id="fundraisingPopup">
+    <h2><br><br></h2>
+    <label for="amount">Valor:</label>
+    <input type="number" id="amount" placeholder="Valor em reais" required><br><br>
+    <label for="name">Nome:</label>
+    <input type="text" id="name" placeholder="Nome da convidada" required><br><br>
+    <label for="description">Descrição:</label>
+    <input type="text" id="description" placeholder="Descrição da convidada" required>
+    <button onclick="addFundraising()">Adicionar</button>
+    <button onclick="hidePopup()">Cancelar</button>
   </div>
 
-  <div id="donationTable"></div>
-  <div id="fundraisingTable"></div>
+  <table id="donationsTable">
+    <caption><h2>Doações</h2></caption>
+    <thead>
+      <tr>
+        <th>Valor</th>
+        <th>Descrição</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <table id="fundraisingsTable">
+    <caption><h2>Convidadas</h2></caption>
+    <thead>
+      <tr>
+        <th>Valor</th>
+        <th>Nome</th>
+        <th>Descrição</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
   <div id="chartContainer"></div>
 
-  <div id="fundraisingProgress"></div>
+  <div class="progress-container">
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="progress-text" id="progressText"></div>
+  </div>
 
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-firestore.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
+    // Firebase configuration
+    const firebaseConfig = {
+  apiKey: "AIzaSyAN_DBdJ7clabyexGLipoU5pwuKdVlBOpk",
+  authDomain: "transfromadasnoacamp.firebaseapp.com",
+  databaseURL: "https://transfromadasnoacamp-default-rtdb.firebaseio.com",
+  projectId: "transfromadasnoacamp",
+  storageBucket: "transfromadasnoacamp.appspot.com",
+  messagingSenderId: "68184819772",
+  appId: "1:68184819772:web:0af66cc120c6836d629b39"
+};
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.firestore();
+
     var donations = [];
     var fundraisings = [];
 
-    function updateTables() {
-      var donationTable = document.getElementById('donationTable');
-      donationTable.innerHTML = '';
+    function addDonation() {
+      var amount = parseFloat(document.getElementById('donationPopup').querySelector('#amount').value);
+      var description = document.getElementById('donationPopup').querySelector('#description').value;
 
-      var fundraisingTable = document.getElementById('fundraisingTable');
-      fundraisingTable.innerHTML = '';
-
-      if (donations.length === 0 && fundraisings.length === 0) {
-        donationTable.innerHTML = '<p>Nenhuma doação encontrada.</p>';
-        fundraisingTable.innerHTML = '<p>Nenhuma arrecadação encontrada.</p>';
-        return;
-      }
-
-      if (donations.length > 0) {
-        var donationTableHtml = '<h2>Doações</h2><table><tr><th>Valor</th><th>Descrição</th></tr>';
-        for (var i = 0; i < donations.length; i++) {
-          donationTableHtml += '<tr><td>' + formatCurrency(donations[i].amount) + '</td><td>' + (donations[i].description || '') + '</td></tr>';
-        }
-        donationTableHtml += '</table>';
-        donationTable.innerHTML = donationTableHtml;
-      }
-
-      if (fundraisings.length > 0) {
-        var fundraisingTableHtml = '<h2>Convidadas</h2><table><tr><th>Valor necessário</th><th>Nome</th><th>Descrição</th></tr>';
-        for (var j = 0; j < fundraisings.length; j++) {
-          fundraisingTableHtml += '<tr><td>' + formatCurrency(fundraisings[j].amount) + '</td><td>' + fundraisings[j].name + '</td><td>' + (fundraisings[j].description || '') + '</td></tr>';
-        }
-        fundraisingTableHtml += '</table>';
-        fundraisingTable.innerHTML = fundraisingTableHtml;
-      }
-    }
-
-    function formatCurrency(value) {
-      return 'R$ ' + value.toFixed(2);
-    }
-
-    function addDonation(amount, description) {
-      donations.push({
+      db.collection("donations").add({
         amount: amount,
         description: description
+      })
+      .then(function(docRef) {
+        donations.push({
+          id: docRef.id,
+          amount: amount,
+          description: description
+        });
+        renderDonationsTable();
+      })
+      .catch(function(error) {
+        console.error("Error adding donation: ", error);
       });
-      updateTables();
+
+      hidePopup();
     }
 
-    function addFundraising(amount, name, description) {
-      fundraisings.push({
+    function addFundraising() {
+      var amount = parseFloat(document.getElementById('fundraisingPopup').querySelector('#amount').value);
+      var name = document.getElementById('fundraisingPopup').querySelector('#name').value;
+      var description = document.getElementById('fundraisingPopup').querySelector('#description').value;
+
+      db.collection("fundraisings").add({
         amount: amount,
         name: name,
         description: description
+      })
+      .then(function(docRef) {
+        fundraisings.push({
+          id: docRef.id,
+          amount: amount,
+          name: name,
+          description: description
+        });
+        renderFundraisingsTable();
+      })
+      .catch(function(error) {
+        console.error("Error adding fundraising: ", error);
       });
-      updateTables();
+
+      hidePopup();
     }
 
-    function getTotalDonations() {
-      var totalDonations = 0;
-      for (var i = 0; i < donations.length; i++) {
-        totalDonations += donations[i].amount;
+    function renderDonationsTable() {
+      var tableBody = document.getElementById('donationsTable').querySelector('tbody');
+      tableBody.innerHTML = "";
+
+      donations.forEach(function(donation) {
+        var row = document.createElement('tr');
+        row.innerHTML = "<td>" + donation.amount + "</td><td>" + donation.description + "</td>";
+        tableBody.appendChild(row);
+      });
+    }
+
+    function renderFundraisingsTable() {
+      var tableBody = document.getElementById('fundraisingsTable').querySelector('tbody');
+      tableBody.innerHTML = "";
+
+      fundraisings.forEach(function(fundraising) {
+        var row = document.createElement('tr');
+        row.innerHTML = "<td>" + fundraising.amount + "</td><td>" + fundraising.name + "</td><td>" + fundraising.description + "</td>";
+        tableBody.appendChild(row);
+      });
+    }
+
+    function showDonationPopup() {
+      var popupOverlay = document.getElementById('popupOverlay');
+      var donationPopup = document.getElementById('donationPopup');
+
+      popupOverlay.style.display = "block";
+      donationPopup.style.display = "block";
+    }
+
+    function showFundraisingPopup() {
+      var popupOverlay = document.getElementById('popupOverlay');
+      var fundraisingPopup = document.getElementById('fundraisingPopup');
+
+      popupOverlay.style.display = "block";
+      fundraisingPopup.style.display = "block";
+    }
+
+    function hidePopup() {
+      var popupOverlay = document.getElementById('popupOverlay');
+      var donationPopup = document.getElementById('donationPopup');
+      var fundraisingPopup = document.getElementById('fundraisingPopup');
+
+      popupOverlay.style.display = "none";
+      donationPopup.style.display = "none";
+      fundraisingPopup.style.display = "none";
+    }
+
+    function calculateTotalAmount() {
+      var totalAmount = 0;
+      donations.forEach(function(donation) {
+        totalAmount += donation.amount;
+      });
+      fundraisings.forEach(function(fundraising) {
+        totalAmount += fundraising.amount;
+      });
+      return totalAmount;
+    }
+
+    function updateProgress() {
+      var progressBar = document.getElementById('progressBar');
+      var progressText = document.getElementById('progressText');
+      var totalAmount = calculateTotalAmount();
+      var goalAmount = 500;
+
+      var progressPercentage = (totalAmount / goalAmount) * 100;
+      progressBar.style.width = progressPercentage + "%";
+      progressText.innerHTML = "Progresso: R$" + totalAmount.toFixed(2) + " de R$" + goalAmount.toFixed(2);
+
+      if (progressPercentage >= 100) {
+        progressBar.style.backgroundColor = "#4CAF50";
+      } else {
+        progressBar.style.backgroundColor = "#f44336";
       }
-      return totalDonations;
     }
 
-    function getTotalFundraisings() {
-      var totalFundraisings = 0;
-      for (var i = 0; i < fundraisings.length; i++) {
-        totalFundraisings += fundraisings[i].amount;
-      }
-      return totalFundraisings;
-    }
-
-    function getRemainingAmount() {
-      var totalDonations = getTotalDonations();
-      var totalFundraisings = getTotalFundraisings();
-      var remainingAmount = totalFundraisings - totalDonations;
-      return remainingAmount;
-    }
-
-    function updateFundraisingProgress() {
-      var remainingAmount = getRemainingAmount();
-      var fundraisingProgress = document.getElementById('fundraisingProgress');
-      fundraisingProgress.innerHTML = 'Valor que falta receber: ' + formatCurrency(remainingAmount);
-    }
-
-    function openPopup(popupId) {
-      var popup = document.getElementById(popupId);
-      var overlay = document.getElementById('popupOverlay');
-      popup.style.display = 'block';
-      overlay.style.display = 'block';
-    }
-
-    function closePopup(popupId) {
-      var popup = document.getElementById(popupId);
-      var overlay = document.getElementById('popupOverlay');
-      popup.style.display = 'none';
-      overlay.style.display = 'none';
-    }
-
-    function init() {
-      var donateButton = document.getElementById('donateButton');
-      donateButton.addEventListener('click', function() {
-        openPopup('donatePopup');
-      });
-
-      var fundraiseButton = document.getElementById('fundraiseButton');
-      fundraiseButton.addEventListener('click', function() {
-        openPopup('fundraisePopup');
-      });
-
-      var closeDonatePopupButton = document.getElementById('closeDonatePopupButton');
-      closeDonatePopupButton.addEventListener('click', function(event) {
-        event.preventDefault();
-        closePopup('donatePopup');
-      });
-
-      var closeFundraisePopupButton = document.getElementById('closeFundraisePopupButton');
-      closeFundraisePopupButton.addEventListener('click', function(event) {
-        event.preventDefault();
-        closePopup('fundraisePopup');
-      });
-
-      var donationForm = document.getElementById('donationForm');
-      donationForm.addEventListener('submit', function(event) {
-        event.preventDefault();
-        var donationAmount = document.getElementById('donationAmount').value;
-        var donationDescription = document.getElementById('donationDescription').value;
-        addDonation(parseFloat(donationAmount), donationDescription);
-        closePopup('donatePopup');
-      });
-
-      var fundraisingForm = document.getElementById('fundraisingForm');
-      fundraisingForm.addEventListener('submit', function(event) {
-        event.preventDefault();
-        var fundraisingAmount = document.getElementById('fundraisingAmount').value;
-        var fundraisingName = document.getElementById('fundraisingName').value;
-        var fundraisingDescription = document.getElementById('fundraisingDescription').value;
-        addFundraising(parseFloat(fundraisingAmount), fundraisingName, fundraisingDescription);
-        closePopup('fundraisePopup');
-      });
-
-      updateTables();
-      updateFundraisingProgress();
-    }
-
-    init();
-  function addDonation(amount, description) {
-      donations.push({
-        amount: amount,
-        description: description
-      });
-      updateTables();
-      updateFundraisingProgress(); // Atualiza o valor que falta receber
-    }
-
-    function addFundraising(amount, name, description) {
-      fundraisings.push({
-        amount: amount,
-        name: name,
-        description: description
-      });
-      updateTables();
-      updateFundraisingProgress(); // Atualiza o valor que falta receber
-    }  
-
-
-// manifest json
-     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function() {
-        navigator.serviceWorker.register('service-worker.js').then(function(registration) {
-          console.log('Service Worker registrado com sucesso:', registration.scope);
-        }).catch(function(error) {
-          console.log('Falha ao registrar o Service Worker:', error);
+    db.collection("donations").onSnapshot(function(querySnapshot) {
+      donations = [];
+      querySnapshot.forEach(function(doc) {
+        donations.push({
+          id: doc.id,
+          amount: doc.data().amount,
+          description: doc.data().description
         });
       });
+      renderDonationsTable();
+      updateProgress();
+    });
+
+    db.collection("fundraisings").onSnapshot(function(querySnapshot) {
+      fundraisings = [];
+      querySnapshot.forEach(function(doc) {
+        fundraisings.push({
+          id: doc.id,
+          amount: doc.data().amount,
+          name: doc.data().name,
+          description: doc.data().description
+        });
+      });
+      renderFundraisingsTable();
+      updateProgress();
+    });
+
+    // Chart.js configuration
+    var chartData = {
+      labels: ["Doações", "Convidadas"],
+      datasets: [{
+        label: "Valor",
+        data: [0, 0],
+        backgroundColor: ["#4CAF50", "#f44336"]
+      }]
+    };
+
+    var chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 100,
+            callback: function(value, index, values) {
+              return "R$" + value;
+            }
+          }
+        }
+      }
+    };
+
+    var chart = new Chart(document.getElementById('chartContainer').getContext('2d'), {
+      type: 'bar',
+      data: chartData,
+      options: chartOptions
+    });
+
+    function updateChart() {
+      var donationsTotal = 0;
+      var fundraisingsTotal = 0;
+
+      donations.forEach(function(donation) {
+        donationsTotal += donation.amount;
+      });
+      fundraisings.forEach(function(fundraising) {
+        fundraisingsTotal += fundraising.amount;
+      });
+
+      chart.data.datasets[0].data = [donationsTotal, fundraisingsTotal];
+      chart.update();
     }
+
+    updateProgress();
+    updateChart();
+
+
+    function updateProgress() {
+  var progressBar = document.getElementById('progressBar');
+  var progressText = document.getElementById('progressText');
+  var missingAmountText = document.getElementById('missingAmount');
+  var totalAmount = calculateTotalAmount();
+  var goalAmount = 0;
+  var missingAmount = goalAmount - totalAmount;
+
+  var progressPercentage = (totalAmount / goalAmount) * 100;
+  progressBar.style.width = progressPercentage + "%";
+  progressText.innerHTML = "Progresso: R$" + totalAmount.toFixed(2) + " de R$" + goalAmount.toFixed(2);
+
+  if (progressPercentage >= 100) {
+    progressBar.style.backgroundColor = "#4CAF50";
+  } else {
+    progressBar.style.backgroundColor = "#f44336";
+  }
+
+  missingAmountText.innerHTML = "Falta: R$" + missingAmount.toFixed(2);
+}
+
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
