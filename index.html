@@ -319,46 +319,57 @@
       fundraisingPopup.style.display = "none";
     }
 
-    function calculateTotalAmount() {
-      var totalAmount = 0;
-      donations.forEach(function(donation) {
-        totalAmount += donation.amount;
-      });
-      fundraisings.forEach(function(fundraising) {
-        totalAmount += fundraising.amount;
-      });
-      return totalAmount;
-    }
+  function calculateTotalAmount() {
+  var totalAmount = 0;
+  donations.forEach(function(donation) {
+    totalAmount += donation.amount;
+  });
+
+  var goalAmount = 0;
+  fundraisings.forEach(function(fundraising) {
+    goalAmount += fundraising.amount;
+  });
+
+  var remainingAmount = totalAmount - goalAmount;
+  return remainingAmount;
+}
+
+
+
 
     function updateProgress() {
-      var progressBar = document.getElementById('progressBar');
-      var progressText = document.getElementById('progressText');
-      var totalAmount = calculateTotalAmount();
-      var goalAmount = 500;
+  var progressBar = document.getElementById('progressBar');
+  var progressText = document.getElementById('progressText');
+  var missingAmountText = document.getElementById('missingAmount');
+  var totalAmount = calculateTotalAmount();
+  var goalAmount = 0;
+  var missingAmount = goalAmount - totalAmount;
 
-      var progressPercentage = (totalAmount / goalAmount) * 100;
-      progressBar.style.width = progressPercentage + "%";
-      progressText.innerHTML = "Progresso: R$" + totalAmount.toFixed(2) + " de R$" + goalAmount.toFixed(2);
+  var progressPercentage = (totalAmount / goalAmount) * 100;
+  progressBar.style.width = progressPercentage + "%";
+  progressText.innerHTML = "Progresso: R$" + totalAmount.toFixed(2) + " de R$" + goalAmount.toFixed(2);
 
-      if (progressPercentage >= 100) {
-        progressBar.style.backgroundColor = "#4CAF50";
-      } else {
-        progressBar.style.backgroundColor = "#f44336";
-      }
-    }
+  if (progressPercentage >= 100) {
+    progressBar.style.backgroundColor = "#4CAF50";
+  } else {
+    progressBar.style.backgroundColor = "#f44336";
+  }
+
+  missingAmountText.innerHTML = "Falta: R$" + missingAmount.toFixed(2);
+}
 
     db.collection("donations").onSnapshot(function(querySnapshot) {
-      donations = [];
-      querySnapshot.forEach(function(doc) {
-        donations.push({
-          id: doc.id,
-          amount: doc.data().amount,
-          description: doc.data().description
-        });
-      });
-      renderDonationsTable();
-      updateProgress();
+  donations = [];
+  querySnapshot.forEach(function(doc) {
+    donations.push({
+      id: doc.id,
+      amount: doc.data().amount,
+      description: doc.data().description
     });
+  });
+  renderDonationsTable();
+  updateProgress();
+});
 
     db.collection("fundraisings").onSnapshot(function(querySnapshot) {
       fundraisings = [];
