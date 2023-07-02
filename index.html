@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Transformadas no acamp</title>
+  <title>Clay no acamp</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -135,24 +135,65 @@
       #chartContainer {
         height: 200px;
       }
-    }
+    }    
+   /* Estilizando o checkbox */
+  input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #FF0000;
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* Estilizando o estado selecionado do checkbox */
+  input[type="checkbox"]:checked {
+    border-color: #32CD32;
+  }
+
+  /* Estilizando o marcador do checkbox */
+  input[type="checkbox"]::before {
+    content: "\2713";
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    font-size: 12px;
+    line-height: 14px;
+    text-align: center;
+    background-color: transparent;
+    border-radius: 2px;
+    margin: 2px;
+    transition: background-color 0.3s, border-color 0.3s;
+    color: transparent;
+  }
+
+  /* Estilizando o marcador do checkbox no estado selecionado */
+  input[type="checkbox"]:checked::before {
+    background-color: #fff;
+    color: #32CD32;
+  }
+
   </style>
 </head>
 <body>
-  <h1>Transformadas no acamp</h1>
+  <h1>Clay no Acamp</h1>
 
+  <div id="totalAmount"></div><br>
   <div id="missingAmount"></div><br>
 
 
-  <button onclick="showDonationPopup()">Adicionar doação</button><br><br>
-  <button onclick="showFundraisingPopup()">Adicionar Convidada</button>
+  <button onclick="showDonationPopup()">Adicionar Doação</button><br><br>
+  <button onclick="showFundraisingPopup()">Adicionar Acampante</button>
 
   <div class="popup-overlay" id="popupOverlay"></div>
 
   <div class="popup-container" id="donationPopup">
-    <h2>Adicionar doação</h2>
+    <h2>Adicionar Doação</h2>
     <label for="amount">Valor:</label>
-    <input type="number" id="amount" placeholder="Valor em reais" required><br><br>
+    <input type="number" id="amount" placeholder="Valor da doação" required><br><br>
     <label for="description">Descrição:</label>
     <input type="text" id="description" placeholder="Descrição da doação" required>
     <button onclick="addDonation()">Adicionar</button>
@@ -160,13 +201,13 @@
   </div>
 
   <div class="popup-container" id="fundraisingPopup">
-    <h2><br><br></h2>
+    <h2>Adicionar Acampante</h2>
     <label for="amount">Valor:</label>
-    <input type="number" id="amount" placeholder="Valor em reais" required><br><br>
+    <input type="number" id="amount" placeholder="Valor que precisa" required><br><br>
     <label for="name">Nome:</label>
-    <input type="text" id="name" placeholder="Nome da convidada" required><br><br>
+    <input type="text" id="name" placeholder="Nome do acampante" required><br><br>
     <label for="description">Descrição:</label>
-    <input type="text" id="description" placeholder="Descrição da convidada" required>
+    <input type="text" id="description" placeholder="Descrição do acampante" required>
     <button onclick="addFundraising()">Adicionar</button>
     <button onclick="hidePopup()">Cancelar</button>
   </div>
@@ -177,18 +218,21 @@
       <tr>
         <th>Valor</th>
         <th>Descrição</th>
+        <th>Ação</th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
 
   <table id="fundraisingsTable">
-    <caption><h2>Convidadas</h2></caption>
+    <caption><h2>Acampantes</h2></caption>
     <thead>
       <tr>
         <th>Valor</th>
         <th>Nome</th>
         <th>Descrição</th>
+        <th>Inscrição</th>
+        <th>Ação</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -247,52 +291,141 @@
     }
 
     function addFundraising() {
-      var amount = parseFloat(document.getElementById('fundraisingPopup').querySelector('#amount').value);
-      var name = document.getElementById('fundraisingPopup').querySelector('#name').value;
-      var description = document.getElementById('fundraisingPopup').querySelector('#description').value;
+  var amount = parseFloat(document.getElementById('fundraisingPopup').querySelector('#amount').value);
+  var name = document.getElementById('fundraisingPopup').querySelector('#name').value;
+  var description = document.getElementById('fundraisingPopup').querySelector('#description').value;
 
-      db.collection("fundraisings").add({
-        amount: amount,
-        name: name,
-        description: description
-      })
-      .then(function(docRef) {
-        fundraisings.push({
-          id: docRef.id,
-          amount: amount,
-          name: name,
-          description: description
-        });
-        renderFundraisingsTable();
-      })
-      .catch(function(error) {
-        console.error("Error adding fundraising: ", error);
-      });
+  db.collection("fundraisings").add({
+    amount: amount,
+    name: name,
+    description: description,
+    checked: false // Adicionando a propriedade "checked" inicialmente como false
+  })
+  .then(function(docRef) {
+    fundraisings.push({
+      id: docRef.id,
+      amount: amount,
+      name: name,
+      description: description,
+      checked: false
+    });
+    renderFundraisingsTable();
+  })
+  .catch(function(error) {
+    console.error("Error adding fundraising: ", error);
+  });
 
-      hidePopup();
+  hidePopup();
+}
+    // Função para atualizar o estado de check de uma convidada
+function updateCheckStatus(fundraisingId, checked) {
+  db.collection("fundraisings").doc(fundraisingId).update({
+    checked: checked
+  })
+  .then(function() {
+    var fundraising = fundraisings.find(function(fundraising) {
+      return fundraising.id === fundraisingId;
+    });
+
+    if (fundraising) {
+      fundraising.checked = checked;
     }
 
-    function renderDonationsTable() {
-      var tableBody = document.getElementById('donationsTable').querySelector('tbody');
-      tableBody.innerHTML = "";
+    renderFundraisingsTable();
+  })
+  .catch(function(error) {
+    console.error("Error updating check status: ", error);
+  });
+}
+    function saveCheckStatus() {
+  var checkboxes = document.querySelectorAll('#fundraisingsTable input[type="checkbox"]');
+  checkboxes.forEach(function(checkbox) {
+    var fundraisingId = checkbox.parentNode.parentNode.dataset.id;
+    var checked = checkbox.checked;
+    localStorage.setItem(fundraisingId, checked);
+  });
+}
+    function addCheckboxEventListeners() {
+  var checkboxes = document.querySelectorAll('#fundraisingsTable input[type="checkbox"]');
+  checkboxes.forEach(function(checkbox) {
+    checkbox.addEventListener('change', saveCheckStatus);
+  });
+}
 
-      donations.forEach(function(donation) {
-        var row = document.createElement('tr');
-        row.innerHTML = "<td>" + donation.amount + "</td><td>" + donation.description + "</td>";
-        tableBody.appendChild(row);
+function deleteDonation(donationId) {
+  db.collection("donations").doc(donationId).delete()
+    .then(function() {
+      donations = donations.filter(function(donation) {
+        return donation.id !== donationId;
       });
-    }
+      renderDonationsTable();
+      updateProgress();
+    })
+    .catch(function(error) {
+      console.error("Error deleting donation: ", error);
+    });
+}
 
-    function renderFundraisingsTable() {
-      var tableBody = document.getElementById('fundraisingsTable').querySelector('tbody');
-      tableBody.innerHTML = "";
 
-      fundraisings.forEach(function(fundraising) {
-        var row = document.createElement('tr');
-        row.innerHTML = "<td>" + fundraising.amount + "</td><td>" + fundraising.name + "</td><td>" + fundraising.description + "</td>";
-        tableBody.appendChild(row);
+function deleteFundraising(fundraisingId) {
+  db.collection("fundraisings").doc(fundraisingId).delete()
+    .then(function() {
+      fundraisings = fundraisings.filter(function(fundraising) {
+        return fundraising.id !== fundraisingId;
       });
-    }
+      renderFundraisingsTable();
+      updateProgress();
+    })
+    .catch(function(error) {
+      console.error("Error deleting fundraising: ", error);
+    });
+}
+
+function renderDonationsTable() {
+  var tableBody = document.getElementById('donationsTable').querySelector('tbody');
+  tableBody.innerHTML = "";
+
+  donations.forEach(function(donation) {
+    var row = document.createElement('tr');
+    row.innerHTML = "<td>" + donation.amount + "</td><td>" + donation.description + "</td><td><button onclick=\"deleteDonation('" + donation.id + "')\">Excluir</button></td>";
+    tableBody.appendChild(row);
+  });
+
+  // Calculate total amount
+  var totalAmount = donations.reduce(function(acc, donation) {
+    return acc + donation.amount;
+  }, 0);
+
+  // Update total amount element
+  var totalAmountElement = document.getElementById('totalAmount');
+  totalAmountElement.textContent = "Total arrecadado: R$" + totalAmount.toFixed(2);
+}
+
+
+function renderFundraisingsTable() {
+  var tableBody = document.getElementById('fundraisingsTable').querySelector('tbody');
+  tableBody.innerHTML = "";
+
+  fundraisings.forEach(function(fundraising) {
+    var row = document.createElement('tr');
+    row.dataset.id = fundraising.id;
+    row.innerHTML = "<td>" + fundraising.amount + "</td><td>" + fundraising.name + "</td><td>" + fundraising.description + "</td><td><input type='checkbox'></td><td><button onclick=\"deleteFundraising('" + fundraising.id + "')\">Excluir</button></td>";
+
+    tableBody.appendChild(row);
+  });
+
+  // Atualizar o estado dos checkboxes
+  var checkboxes = tableBody.querySelectorAll('input[type="checkbox"]');
+  checkboxes.forEach(function(checkbox) {
+    var fundraisingId = checkbox.parentNode.parentNode.dataset.id;
+    var checked = localStorage.getItem(fundraisingId) === 'true';
+    checkbox.checked = checked;
+  });
+  addCheckboxEventListeners();
+}
+
+
+
 
     function showDonationPopup() {
       var popupOverlay = document.getElementById('popupOverlay');
@@ -456,7 +589,7 @@
     progressBar.style.backgroundColor = "#f44336";
   }
 
-  missingAmountText.innerHTML = "Falta: R$" + missingAmount.toFixed(2);
+  missingAmountText.innerHTML = "Caixa: R$" + missingAmount.toFixed(2);
 }
 
   </script>
