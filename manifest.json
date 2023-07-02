@@ -7,11 +7,7 @@
       "sizes": "192x192",
       "type": "image/png"
     },
-    {
-      "src": "duda180.png",
-      "sizes": "180x180",
-      "type": "image/png"
-    },
+    
     {
       "src": "duda512.png",
       "sizes": "512x512",
