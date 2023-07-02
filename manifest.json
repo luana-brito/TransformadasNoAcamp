@@ -1,20 +1,25 @@
 {
-  "name": "Gerenciador de Doações",
-  "short_name": "Doações",
-  "start_url": ".",
-  "display": "standalone",
-  "background_color": "#f0f0f0",
-  "theme_color": "#4CAF50",
+  "name": "Transformadas no acamp",
+  "short_name": "Transformadas",
   "icons": [
     {
-      "src": "icon-192x192.png",
+      "src": "duda192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icon-512x512.png",
+      "src": "duda180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "duda512.jpg",
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "start_url": "/index.html",
+  "display": "standalone",
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff"
 }
